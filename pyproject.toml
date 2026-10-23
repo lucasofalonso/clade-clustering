@@ -1,0 +1,32 @@
+[project]
+name = "clade-clustering"
+version = "0.1.0"
+description = "Candida auris clade identification from core-genome SNPs using unsupervised learning and per-clade allelic signatures"
+readme = "README.md"
+authors = [
+    { name = "Lucas", email = "lucasalonso@id.uff.br" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.5",
+    "pyarrow>=26.0.0",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+    "umap-learn>=0.5.12",
+]
+
+[project.scripts]
+clade-clustering = "clade_clustering:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "jupyterlab>=4.6.3",
+]

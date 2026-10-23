@@ -1,0 +1,51 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+*.partial*.json
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local scientific data
+data/raw/
+data/results/
+
+# Notebooks — versionar somente o pipeline oficial
+notebooks/*
+!notebooks/stage/
+
+# LLM export
+llm_export/
+
+# External and processed scientific data
+data/external/
+data/processed/
+
+
+# Manual laboratory data — versionar somente os FASTAs de entrada
+data/manual/*
+!data/manual/incoming/
+data/manual/incoming/*
+!data/manual/incoming/*.fasta
+
+# Intermediate working data
+data/work
+
+# Downloadable reference resources
+data/reference/annotations/
+data/reference/*.gff
+data/reference/*.gff3
+data/reference/*.zip
+
+# Local context / working notes
+contexto_*.md
+
+# Editors / OS
+.vscode/
+.DS_Store
