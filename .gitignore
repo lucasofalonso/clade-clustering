@@ -37,6 +37,9 @@ data/manual/incoming/*
 # Intermediate working data
 data/work
 
+# Local validation of the package against v4 (temporary)
+data/validation/
+
 # Downloadable reference resources
 data/reference/annotations/
 data/reference/*.gff

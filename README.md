@@ -16,7 +16,7 @@ This project develops, as a series of Jupyter notebooks, the building blocks of 
 
 ### Project status
 
-The repository is at the prototyping stage. The notebooks are not the final product: each one in `notebooks/stage/` is a building block of a future end-to-end pipeline and genomic surveillance CLI. Each block has a single responsibility, reads and writes explicit files on disk and checks its inputs and outputs, so it can later become a script or a pipeline step. Orchestration, the command-line interface and moving the notebook logic into `src/clade_clustering/` are still to be done; for now, the steps are run by hand, in order.
+The repository is at the prototyping stage. The notebooks are not the final product: each one in `notebooks/stage/` is a building block of a future end-to-end pipeline and genomic surveillance CLI. Each block has a single responsibility, reads and writes explicit files on disk and checks its inputs and outputs, so it can later become a script or a pipeline step. Moving the notebook logic into `src/clade_clustering/` has started (see [Python package](#python-package)): the Parsnp matrix construction of notebook 03 is already available as functions, but the notebooks themselves still run their original code. Orchestration of the whole pipeline and the command-line interface are still to be done; for now, the steps are run by hand, in order.
 
 Notebook 05 already produces the project's main results (allelic signatures, cross-validation, hold-out and external classification, coding gene recurrence), but it has not been refined yet. It is still long and exploratory, with inspection cells kept alongside the analysis and some code copied from notebook 04 instead of shared through `src/`. Its results are the ones reported below; its structure will change.
 
@@ -42,6 +42,7 @@ Read these numbers together with the [Limitations](#limitations): clades V and V
   - [Key results](#key-results-snapshot-v4)
 - [Repository layout](#repository-layout)
 - [Pipeline](#pipeline)
+- [Python package](#python-package)
 - [Reproducibility](#reproducibility)
   - [Requirements](#requirements)
   - [Installation](#installation)
@@ -72,9 +73,12 @@ clade-clustering/
 │       ├── 04_epidemiology_and_ml_modeling.ipynb
 │       └── 05_validate_clade_signatures.ipynb
 ├── src/clade_clustering/
-│   ├── paths.py                       # project paths (data/, manifests/, ...)
+│   ├── paths.py                       # fixed project paths (data/, manifests/, ...)
+│   ├── layout.py                      # versioned directories and artifacts shared between stages
+│   ├── genotypes.py                   # VCF → genotype matrix, locus table and sample metadata (nb03)
 │   ├── metadata.py                    # NCBI metadata column normalization
 │   └── scripts/                       # plotting and metric helpers (PCA, clustering)
+├── tests/                             # pytest unit tests for layout.py and genotypes.py
 ├── pyproject.toml
 └── uv.lock
 ```
@@ -106,6 +110,46 @@ Reference GFF (GCF_003013715.1) ────────────────
 | `05_validate_clade_signatures` | Discovers per-clade allelic signatures (thresholds 0.8 / 0.2), cross-validates them without letting validation experts into discovery, classifies the hold-outs (and the external panel, if present), annotates markers against the GFF (coding / genic non-coding / intergenic), computes per-gene recurrence and relates PCA loadings to genes. | `data/results/v4/signature_cross_validation/*.csv` |
 
 `DATA_VERSION = "v4"` and `SEED = 42` are set at the top of each notebook.
+
+## Python package
+
+The notebook logic is being moved into the `clade_clustering` package, one stage at a time, without changing the scientific results. Each extracted function was checked against the `v4` artifacts before being adopted.
+
+**`layout.py`** resolves the versioned directories and the files that one stage hands to the next (e.g. `sample_metadata_clean.parquet` from nb01 to nb03, `parsnp.vcf` from nb02 to nb03). It only builds paths; it never reads, writes or creates anything.
+
+```python
+from clade_clustering.layout import Layout
+
+layout = Layout("v4")
+layout.parsnp_vcf             # data/results/v4/parsnp/parsnp.vcf
+layout.parsnp_matrices_dir    # data/results/v4/matrices/parsnp
+```
+
+**`genotypes.py`** reproduces the Parsnp part of notebook 03 (section 3.5.1). Processing and persistence are separate: the functions take explicit paths and do not depend on `Layout`.
+
+| Function | Step |
+|---|---|
+| `read_vcf` | Reads the VCF; the 9 fixed columns are lowercased |
+| `filter_pass_snps` | Keeps `PASS` sites whose REF and every ALT allele are single bases |
+| `build_snp_info` | Builds the locus table, with `snp_id = chrom:pos:ref>alt` |
+| `build_genotype_matrix` | Builds the sample × locus matrix (`int8`); rejects missing or non-`GT` genotypes |
+| `map_samples_to_accessions` | Maps VCF sample names to NCBI accessions and drops the reference |
+| `merge_sample_with_metadata` | Attaches `sample_metadata_clean` to each sample (left join) |
+| `align_by_accession` | Indexes the matrix and the metadata by accession, row by row |
+| `build_matrices_from_vcf` | Runs all the steps above, in order |
+| `save_genotype_matrices` / `load_genotype_matrices` | Writes / reads `X_genotypes`, `snp_info` and `sample_metadata` as parquet |
+
+```python
+from clade_clustering import genotypes
+
+X, snp_info, metadata = genotypes.build_matrices_from_vcf(
+    vcf_path=layout.parsnp_vcf,
+    sample_metadata_path=layout.sample_metadata_clean,
+)
+genotypes.save_genotype_matrices(X, snp_info, metadata, out_dir)
+```
+
+The external mapping panel (section 3.5.2 of notebook 03) has not been extracted yet. Unit tests run with `uv run pytest`.
 
 ## Reproducibility
 
